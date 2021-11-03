@@ -1,10 +1,9 @@
-import json
-import requests
 import csv
 import sys
 import logging
 import zuora_const
 import datetime
+import zuoraApiCaller
 
 # ログ出力の設定
 logger = logging.getLogger()
@@ -17,10 +16,10 @@ def main(argv):
     fileName = argv[1]
     reader = _readCsv(fileName)
 
-    auth_zuora_api_result = _calloAuthZuoraApi()
+    auth_zuora_api_result = zuora_api_caller_class.call_oauth_zuora_api()
     access_token = auth_zuora_api_result["access_token"]
 
-    retrieve_product_rate_plans_zuora_api_result = _callRetrieveProductRatePlansZuoraApi(access_token)
+    retrieve_product_rate_plans_zuora_api_result = zuora_api_caller_class.call_retrieve_product_rate_plans_zuora_api(access_token)
     if retrieve_product_rate_plans_zuora_api_result["success"] == False:
         raise Exception("プラン情報の取得に失敗")
     product_rate_plans = retrieve_product_rate_plans_zuora_api_result["productRatePlans"]
@@ -35,7 +34,7 @@ def main(argv):
         if product_rate_plan_info is None:
             print("プロダクトプランが見つからない。addProductRatePlanId="+row['addProductRatePlanId'])
         else:
-            subscription_rate_plan_info = _callRetrieveSubscriptionZuoraApi(access_token, row['subscriptionId'], row['removeRatePlanId'])
+            subscription_rate_plan_info = zuora_api_caller_class.call_retrieve_subscription_zuora_api(access_token, row['subscriptionId'], row['removeRatePlanId'])
             if subscription_rate_plan_info is None:
                 print("サブスクリプションプランが見つからない。")
                 continue
@@ -114,180 +113,25 @@ def _subscriptionPlanChange(access_token, subscription_id, add_rate_plan, remove
             }
         charge_overrides.append(charge_override)
 
-    todayStr = datetime.date.today().strftime('%Y-%m-%d')
+    today_str = datetime.date.today().strftime('%Y-%m-%d')
 
-    childAddObj = {
+    child_add_obj = {
         "chargeOverrides": charge_overrides,
-        "contractEffectiveDate": todayStr,
+        "contractEffectiveDate": today_str,
         "productRatePlanId": add_rate_plan_id,
         "PlanId__c" :add_rate_plan["PlanId__c"]
     }
     add_plans = []
-    add_plans.append(childAddObj)
+    add_plans.append(child_add_obj)
 
-    childRemoveObj = {
-        "contractEffectiveDate": todayStr,
+    child_remove_obj = {
+        "contractEffectiveDate": today_str,
         "ratePlanId": remove_rate_plan_id
     }
     remove_plans = []
-    remove_plans.append(childRemoveObj)
+    remove_plans.append(child_remove_obj)
 
-    _callUpdateSubscriptionZuoraApi(access_token, subscription_id, add_plans, remove_plans)
-
-
-def _calloAuthZuoraApi():
-    """
-    Create an OAuth token
-    https://www.zuora.com/developer/api-reference/#tag/OAuth
-
-    Parameters
-    ----------
-    なし
-    
-    Returns
-    -------
-    アクセストークン
-    """ 
-    url = FQDN + zuora_const.const.OAUTH_RESOURCE
-    
-    headers = {
-        "content-type": "application/x-www-form-urlencoded",
-    }
-
-    body = {
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "grant_type": "client_credentials"
-    }
-
-    #TODO エラーハンドリング
-    response = requests.post(
-        url,
-        headers=headers,
-        data=body
-    )
-
-    res_body = json.loads(response.text)
-
-    return res_body
-
-def _callRetrieveProductRatePlansZuoraApi(access_token):
-    """
-    List all product rate plans of a product
-    https://www.zuora.com/developer/api-reference/#operation/GET_ProductRatePlans
-
-    Parameters
-    ----------
-    access_token:str
-        zuoraへのアクセストークン
-        
-    Returns
-    -------
-    productRatePlanCharges:dict
-        販促プランの情報
-    """
-
-    url = FQDN + RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS
-    headers = {
-        "Authorization": "Bearer "+access_token
-    }
-
-    response = requests.get(
-        url,
-        headers=headers
-    )
-
-    res_body = json.loads(response.text)
-
-    return res_body
-
-
-def _callRetrieveSubscriptionZuoraApi(access_token, subscription_id, remove_rate_plan_id):
-    """
-    Retrieve a subscription by key
-    https://www.zuora.com/developer/api-reference/#operation/GET_SubscriptionsByKey
-
-    Parameters
-    ----------
-    access_token:str
-        zuoraへのアクセストークン
-    subscription_id:str
-        Subscription number or ID.
-    remove_rate_plan_id:str
-        ID of a rate plan for this subscription.
-    start_date
-        課金の有効開始日
-        
-    Returns
-    -------
-    res_body:dict
-        レスポンス情報
-    """
-
-    url = FQDN + zuora_const.const.RETRIEVE_SUBSCRIPTION_RESOURCE + subscription_id
-    headers = {
-        "Authorization": "Bearer "+access_token
-    }
-
-    response = requests.get(
-        url,
-        headers=headers
-    )
-
-    res_body = json.loads(response.text)
-
-    return res_body
-
-
-def _callUpdateSubscriptionZuoraApi(access_token, subscription_id, add, remove):
-    """
-    Update a subscription
-    https://www.zuora.com/developer/api-reference/#operation/PUT_Subscription
-
-    Parameters
-    ----------
-    access_token:str
-        zuoraへのアクセストークン
-    subscription_id:str
-        Subscription number or ID.
-    add_rate_plan_id:str
-        ID of a product rate plan for this subscription
-    remove_rate_plan_id:str
-        ID of a rate plan for this subscription.
-    start_date
-        課金の有効開始日
-        
-    Returns
-    -------
-    res_body:dict
-        レスポンス情報
-    """
-
-    url = FQDN + zuora_const.const.UPDATE_SUBSCRIPTION_RESOURCE + subscription_id
-
-    headers = {
-        "Authorization": "Bearer "+access_token,
-        "content-type": "application/json",
-    }
-
-    body = {
-        "add": add,
-        "remove": remove
-    }
-
-    #TODO エラーハンドリング
-    response = requests.put(
-        url,
-        headers=headers,
-        json=body
-    )
-
-    res_body = json.loads(response.text)
-
-    #TODO 削除すること
-    print(res_body)
-
-    return res_body
+    zuora_api_caller_class.call_update_subscription_zuora_api(access_token, subscription_id, add_plans, remove_plans)
 
 if __name__ == "__main__":
     if ENV == "SBX3":
@@ -297,6 +141,9 @@ if __name__ == "__main__":
         RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS = zuora_const.const.RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS + zuora_const.const.SBX3_HANSOKU_PRODUCT_ID + "/productRatePlan"
     else:
         raise Exception("環境を指定してください")
+
+    # zuoraAPI呼び出し用のクラス
+    zuora_api_caller_class = zuoraApiCaller.ZuoraApiCaller(FQDN, CLIENT_ID, CLIENT_SECRET, RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS)
 
     main(sys.argv)
 
