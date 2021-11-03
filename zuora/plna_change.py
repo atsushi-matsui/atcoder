@@ -14,7 +14,7 @@ ENV = "SBX3"
 
 def main(argv):
     fileName = argv[1]
-    reader = _readCsv(fileName)
+    reader = _read_csv(fileName)
 
     auth_zuora_api_result = zuora_api_caller_class.call_oauth_zuora_api()
     access_token = auth_zuora_api_result["access_token"]
@@ -41,10 +41,9 @@ def main(argv):
             print("サブスクリプションプランが見つからない。removeRatePlanId="+row['removeRatePlanId'])
             continue
         #プラン変更を実行
-        _subscriptionPlanChange(access_token, row['subscriptionId'], product_rate_plan_info, subscription_rate_plan_info,row['addProductRatePlanId'], row['removeRatePlanId'])
+        _subscription_plan_change(access_token, row['subscriptionId'], product_rate_plan_info, subscription_rate_plan_info,row['addProductRatePlanId'], row['removeRatePlanId'])
 
-
-def _readCsv(file_name):
+def _read_csv(file_name):
     """
     ファイル読み込み
 
@@ -64,7 +63,7 @@ def _readCsv(file_name):
 
     return file
 
-def _subscriptionPlanChange(access_token, subscription_id, add_rate_plan, remove_rate_plan, add_rate_plan_id, remove_rate_plan_id):
+def _subscription_plan_change(access_token, subscription_id, add_rate_plan, remove_rate_plan, add_rate_plan_id, remove_rate_plan_id):
     #有効開始日を取得する
     start_date = None
     if remove_rate_plan["success"] == False:
@@ -143,9 +142,6 @@ def _subscriptionPlanChange(access_token, subscription_id, add_rate_plan, remove
     else:
         print(subscription_id+"：失敗")
 
-
-
-
 if __name__ == "__main__":
     if ENV == "SBX3":
         FQDN = zuora_const.const.TEST_FQDN
@@ -159,4 +155,3 @@ if __name__ == "__main__":
     zuora_api_caller_class = zuora_api_caller.ZuoraApiCaller(FQDN, CLIENT_ID, CLIENT_SECRET, RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS)
 
     main(sys.argv)
-
