@@ -3,7 +3,7 @@ import sys
 import logging
 import zuora_const
 import datetime
-import zuoraApiCaller
+import zuora_api_caller
 
 # ログ出力の設定
 logger = logging.getLogger()
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         raise Exception("環境を指定してください")
 
     # zuoraAPI呼び出し用のクラス
-    zuora_api_caller_class = zuoraApiCaller.ZuoraApiCaller(FQDN, CLIENT_ID, CLIENT_SECRET, RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS)
+    zuora_api_caller_class = zuora_api_caller.ZuoraApiCaller(FQDN, CLIENT_ID, CLIENT_SECRET, RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS)
 
     main(sys.argv)
 
