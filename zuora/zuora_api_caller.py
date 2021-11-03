@@ -22,7 +22,8 @@ class ZuoraApiCaller:
         
         Returns
         -------
-        アクセストークン
+        res_body:dict
+            レスポンス情報
         """ 
         url = self.fqdn + zuora_const.const.OAUTH_RESOURCE
         
@@ -59,8 +60,8 @@ class ZuoraApiCaller:
             
         Returns
         -------
-        productRatePlanCharges:dict
-            販促プランの情報
+        res_body:dict
+            レスポンス情報
         """
 
         url = self.fqdn + self.retrieve_hansoku_product_rate_plans
@@ -78,7 +79,7 @@ class ZuoraApiCaller:
         return res_body
 
 
-    def call_retrieve_subscription_zuora_api(self, access_token, subscription_id, remove_rate_plan_id):
+    def call_retrieve_subscription_zuora_api(self, access_token, subscription_id):
         """
         Retrieve a subscription by key
         https://www.zuora.com/developer/api-reference/#operation/GET_SubscriptionsByKey
@@ -89,10 +90,6 @@ class ZuoraApiCaller:
             zuoraへのアクセストークン
         subscription_id:str
             Subscription number or ID.
-        remove_rate_plan_id:str
-            ID of a rate plan for this subscription.
-        start_date
-            課金の有効開始日
             
         Returns
         -------
@@ -126,12 +123,10 @@ class ZuoraApiCaller:
             zuoraへのアクセストークン
         subscription_id:str
             Subscription number or ID.
-        add_rate_plan_id:str
-            ID of a product rate plan for this subscription
-        remove_rate_plan_id:str
-            ID of a rate plan for this subscription.
-        start_date
-            課金の有効開始日
+        add:dict
+            プラン変更前のサブスクリプションプラン情報
+        remove:dict
+            プラン変更後のサブスクリプションプラン情報
             
         Returns
         -------
@@ -159,8 +154,5 @@ class ZuoraApiCaller:
         )
 
         res_body = json.loads(response.text)
-
-        #TODO 削除すること
-        print(res_body)
 
         return res_body
