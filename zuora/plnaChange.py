@@ -4,6 +4,7 @@ import csv
 import sys
 import logging
 import zuora_const
+import datetime
 
 # ログ出力の設定
 logger = logging.getLogger()
@@ -16,14 +17,30 @@ def main(argv):
     fileName = argv[1]
     reader = _readCsv(fileName)
 
-    access_token = _calloAuthZuoraApi()
+    auth_zuora_api_result = _calloAuthZuoraApi()
+    access_token = auth_zuora_api_result["access_token"]
+
+    retrieve_product_rate_plans_zuora_api_result = _callRetrieveProductRatePlansZuoraApi(access_token)
+    if retrieve_product_rate_plans_zuora_api_result["success"] == False:
+        raise Exception("プラン情報の取得に失敗")
+    product_rate_plans = retrieve_product_rate_plans_zuora_api_result["productRatePlans"]
 
     for row in reader:
-        start_date = _callRetrieveSubscriptionZuoraApi(access_token, row['subscriptionId'], row['removeRatePlanId'])
-        if start_date is None:
-            continue
+        product_rate_plan_info = None
+        for product_rate_plan in product_rate_plans:
+            if product_rate_plan["id"] == row['addProductRatePlanId']:
+                product_rate_plan_info = product_rate_plan
+                break
 
-        _callUpdateSubscriptionZuoraApi(access_token, row['subscriptionId'], row['addProductRatePlanId'], row['removeRatePlanId'], start_date)
+        if product_rate_plan_info is None:
+            print("プロダクトプランが見つからない。addProductRatePlanId="+row['addProductRatePlanId'])
+        else:
+            subscription_rate_plan_info = _callRetrieveSubscriptionZuoraApi(access_token, row['subscriptionId'], row['removeRatePlanId'])
+            if subscription_rate_plan_info is None:
+                print("サブスクリプションプランが見つからない。")
+                continue
+            
+            _subscriptionPlanChange(access_token, row['subscriptionId'], product_rate_plan_info, subscription_rate_plan_info,row['addProductRatePlanId'], row['removeRatePlanId'])
 
 
 def _readCsv(file_name):
@@ -46,6 +63,77 @@ def _readCsv(file_name):
     file = csv.DictReader(csv_file, delimiter=",", doublequote=True, lineterminator="\r\n", quotechar='"', skipinitialspace=True)
 
     return file
+
+def _subscriptionPlanChange(access_token, subscription_id, add_rate_plan, remove_rate_plan, add_rate_plan_id, remove_rate_plan_id):
+    #有効開始日を取得する
+    start_date = None
+    if remove_rate_plan["success"] == False:
+        print("サブスクの取得に失敗しました。")
+        return
+
+    #TODO ネストやベー
+    rate_plans = remove_rate_plan["ratePlans"]
+    for rate_plan in rate_plans:
+        if rate_plan["id"] == remove_rate_plan_id:
+            plan_id = rate_plan["PlanId__c"]
+            rate_plan_charges = rate_plan["ratePlanCharges"]
+            for rate_plan_charge in rate_plan_charges:
+                if rate_plan_charge["ProductCode__c"] == plan_id:
+                    effective_start_date = rate_plan_charge["effectiveStartDate"]
+                    penalty_start_date__c = rate_plan_charge["PenaltyStartDate__c"]
+                    if penalty_start_date__c is None:
+                        start_date = effective_start_date
+                    else:
+                        start_date = penalty_start_date__c
+    
+    if start_date is None:
+        print("起算日が見つかりません。")
+        return
+    
+    #プロダクトプランを確認
+    if add_rate_plan["status"] != "Active":
+        print("当該プランのステータスがActiveでない")
+        return
+    
+    charge_overrides = []
+    for add_rate_plan_charge in add_rate_plan["productRatePlanCharges"]:
+        if(add_rate_plan_charge["ProductCode__c"] == add_rate_plan["PlanId__c"]):
+            charge_override = {
+                "productRatePlanChargeId": add_rate_plan_charge["id"],
+                "PenaltyStartDate__c": start_date,
+                "ProductCode__c": add_rate_plan_charge["ProductCode__c"],
+                "triggerEvent": "USD",
+                "triggerDate": "2099-12-31"
+            }
+        else:
+            charge_override = {
+                "productRatePlanChargeId": add_rate_plan_charge["id"],
+                "ProductCode__c": add_rate_plan_charge["ProductCode__c"],
+                "triggerEvent": "USD",
+                "triggerDate": "2099-12-31"
+            }
+        charge_overrides.append(charge_override)
+
+    todayStr = datetime.date.today().strftime('%Y-%m-%d')
+
+    childAddObj = {
+        "chargeOverrides": charge_overrides,
+        "contractEffectiveDate": todayStr,
+        "productRatePlanId": add_rate_plan_id,
+        "PlanId__c" :add_rate_plan["PlanId__c"]
+    }
+    add_plans = []
+    add_plans.append(childAddObj)
+
+    childRemoveObj = {
+        "contractEffectiveDate": todayStr,
+        "ratePlanId": remove_rate_plan_id
+    }
+    remove_plans = []
+    remove_plans.append(childRemoveObj)
+
+    _callUpdateSubscriptionZuoraApi(access_token, subscription_id, add_plans, remove_plans)
+
 
 def _calloAuthZuoraApi():
     """
@@ -81,7 +169,38 @@ def _calloAuthZuoraApi():
 
     res_body = json.loads(response.text)
 
-    return res_body["access_token"]
+    return res_body
+
+def _callRetrieveProductRatePlansZuoraApi(access_token):
+    """
+    List all product rate plans of a product
+    https://www.zuora.com/developer/api-reference/#operation/GET_ProductRatePlans
+
+    Parameters
+    ----------
+    access_token:str
+        zuoraへのアクセストークン
+        
+    Returns
+    -------
+    productRatePlanCharges:dict
+        販促プランの情報
+    """
+
+    url = FQDN + RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS
+    headers = {
+        "Authorization": "Bearer "+access_token
+    }
+
+    response = requests.get(
+        url,
+        headers=headers
+    )
+
+    res_body = json.loads(response.text)
+
+    return res_body
+
 
 def _callRetrieveSubscriptionZuoraApi(access_token, subscription_id, remove_rate_plan_id):
     """
@@ -117,27 +236,10 @@ def _callRetrieveSubscriptionZuoraApi(access_token, subscription_id, remove_rate
 
     res_body = json.loads(response.text)
 
-    #TODO ネスト回避
-    if res_body["success"] == True:
-        rate_plans = res_body["ratePlans"]
-        for rate_plan in rate_plans:
-            if rate_plan["id"] == remove_rate_plan_id:
-                plan_id = rate_plan["PlanId__c"]
-                rate_plan_charges = rate_plan["ratePlanCharges"]
-                for rate_plan_charge in rate_plan_charges:
-                    if rate_plan_charge["ProductCode__c"] == plan_id:
-                        effective_start_date = rate_plan_charge["effectiveStartDate"]
-                        penalty_start_date__c = rate_plan_charge["PenaltyStartDate__c"]
-                        if penalty_start_date__c is None:
-                            return effective_start_date
-                        else:
-                            return penalty_start_date__c
-
-    else:
-        raise Exception("サブスクリプション取得処理でエラー"+res_body)
+    return res_body
 
 
-def _callUpdateSubscriptionZuoraApi(access_token, subscription_id, add_rate_plan_id, remove_rate_plan_id, start_date):
+def _callUpdateSubscriptionZuoraApi(access_token, subscription_id, add, remove):
     """
     Update a subscription
     https://www.zuora.com/developer/api-reference/#operation/PUT_Subscription
@@ -167,40 +269,10 @@ def _callUpdateSubscriptionZuoraApi(access_token, subscription_id, add_rate_plan
         "Authorization": "Bearer "+access_token,
         "content-type": "application/json",
     }
-    
-    #TODO 固定値を修正（productRatePlanChargeId、ProductCode__c)
-    charge_override = {
-        "productRatePlanChargeId": "8ad0965d7bcaa195017bcc829485319e",
-        "PenaltyStartDate__c": start_date,
-        "ProductCode__c": "0034452",
-        "triggerEvent": "USD",
-        "triggerDate": "2099-12-31"
-    }
-    charge_overrides = []
-    charge_overrides.append(charge_override)
 
-    #TODO 固定値を修正（contractEffectiveDate、PlanId__c）
-    childAddObj = {
-        "chargeOverrides": charge_overrides,
-        "contractEffectiveDate": "2022-01-01",
-        "productRatePlanId": add_rate_plan_id,
-        "PlanId__c" :"0034452"
-    }
-    add_plans = []
-    add_plans.append(childAddObj)
-
-    #TODO 固定値を修正（contractEffectiveDate）
-    childRemoveObj = {
-        "contractEffectiveDate": "2022-01-01",
-        "ratePlanId": remove_rate_plan_id
-    }
-    remove_plans = []
-    remove_plans.append(childRemoveObj)
-
-    #TODO 固定値を修正（PlanId__c）
     body = {
-        "add": add_plans,
-        "remove": remove_plans
+        "add": add,
+        "remove": remove
     }
 
     #TODO エラーハンドリング
@@ -222,6 +294,7 @@ if __name__ == "__main__":
         FQDN = zuora_const.const.TEST_FQDN
         CLIENT_ID = zuora_const.const.SBX3_CLIENT_ID
         CLIENT_SECRET = zuora_const.const.SBX3_CLIENT_SECRET
+        RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS = zuora_const.const.RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS + zuora_const.const.SBX3_HANSOKU_PRODUCT_ID + "/productRatePlan"
     else:
         raise Exception("環境を指定してください")
 
