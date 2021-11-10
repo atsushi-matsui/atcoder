@@ -156,3 +156,43 @@ class ZuoraApiCaller:
         res_body = json.loads(response.text)
 
         return res_body
+    
+    def call_update_invoices_zuora_api(self, access_token, invoices):
+        """
+        Update invoices
+        https://www.zuora.com/developer/api-reference/#operation/PUT_BatchUpdateInvoices
+
+        Parameters
+        ----------
+        access_token:str
+            zuoraへのアクセストークン
+        invoices:str
+            Container for invoice update details.
+            
+        Returns
+        -------
+        res_body:dict
+            レスポンス情報
+        """
+
+        url = self.fqdn + zuora_const.const.UPDATE_INVOICES
+
+        headers = {
+            "Authorization": "Bearer "+access_token,
+            "content-type": "application/json",
+        }
+
+        body = {
+            "invoices": invoices
+        }
+
+        #TODO エラーハンドリング
+        response = requests.put(
+            url,
+            headers=headers,
+            json=body
+        )
+
+        res_body = json.loads(response.text)
+
+        return res_body
