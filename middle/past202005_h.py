@@ -9,13 +9,13 @@ H = [False]*(L+1)
 for x in X:
     H[x] = True
 
-dist_time = [10**10]*(L+1)
+dist_time = [10**100]*(L+1)
 
 #スタート
 dist_time[0] = 0
 
 #処理開始
-for i in range(0, L+1):
+for i in range(1, L+1):
     #行動1
     dist_time[i] = min(dist_time[i], dist_time[i-1]+T1)
     #行動2
@@ -33,6 +33,6 @@ ans = dist_time[L]
 #ピッタリ止まる or はみ出しジャンプ
 for i in [L-3, L-2, L-1]:
     if i >= 0:
-        ans = min(ans, dist_time[i]+(T1//2)+(T2*(L-i-1/2)))
+        ans = min(ans, dist_time[i]+T1//2+T2*(2*(L-i)-1)//2)
 
 print(ans)
