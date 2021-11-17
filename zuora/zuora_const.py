@@ -19,7 +19,7 @@ const.OAUTH_RESOURCE = "/oauth/token"
 const.UPDATE_SUBSCRIPTION_RESOURCE = "/v1/subscriptions/"
 const.RETRIEVE_SUBSCRIPTION_RESOURCE = "/v1/subscriptions/"
 const.UPDATE_INVOICES = "/v1/invoices"
-const.UPDATE_PAYMENT = "/v1/payments/"
+const.UPDATE_PAYMENT = "/v1/object/payment/"
 ### 販促プラン固定
 const.RETRIEVE_HANSOKU_PRODUCT_RATE_PLANS = "/v1/rateplan/"
 

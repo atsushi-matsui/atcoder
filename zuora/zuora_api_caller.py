@@ -216,7 +216,6 @@ class ZuoraApiCaller:
         """
 
         url = self.fqdn + zuora_const.const.UPDATE_PAYMENT + paymentsId
-        print('url='+url)
 
         headers = {
             "Authorization": "Bearer "+access_token,
@@ -224,7 +223,7 @@ class ZuoraApiCaller:
         }
 
         body = {
-            "comment": "new comment"
+            "SyncDate__NS": "string"
             }
 
         #TODO エラーハンドリング
