@@ -196,3 +196,43 @@ class ZuoraApiCaller:
         res_body = json.loads(response.text)
 
         return res_body
+    
+    def call_update_payment_zuora_api(self, access_token, paymentsId):
+        """
+        Update a payment
+        https://www.zuora.com/developer/api-reference/#operation/PUT_UpdatePayment
+
+        Parameters
+        ----------
+        access_token:str
+            zuoraへのアクセストークン
+        paymentsId:str
+            回収のzuoraID
+            
+        Returns
+        -------
+        res_body:dict
+            レスポンス情報
+        """
+
+        url = self.fqdn + zuora_const.const.UPDATE_PAYMENT + paymentsId
+
+        headers = {
+            "Authorization": "Bearer "+access_token,
+            "content-type": "application/json",
+        }
+
+        body = {
+            "SyncDate__NS": "string"
+            }
+
+        #TODO エラーハンドリング
+        response = requests.put(
+            url,
+            headers=headers,
+            json=body
+        )
+
+        res_body = json.loads(response.text)
+
+        return res_body
