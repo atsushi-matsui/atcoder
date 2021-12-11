@@ -2,9 +2,31 @@
 R, B = list(map(int, input().split()))
 x, y = list(map(int, input().split()))
 
-ng = 0
-ok = 10**8
+'''
+作成する花束：mid
+赤の花束：a
+青の花束：b
 
+mid = a + b
+ax+b <= R
+by+a <= B
+から
+mid <= a+b
+'''
+def check(mid):
+    a = (R-mid)//(x-1)
+    b = (B-mid)//(y-1)
+
+    return mid <= a+b
+    #return a + b <= mid
+
+ok = 0
+ng = 10**18
 while abs(ok-ng) > 1:
-    #　確保できる花束の数
-    pipot = (ok+ng)//2
+    mid = (ok+ng)//2
+    if check(mid):
+        ok = mid
+    else:
+        ng = mid
+
+print(ok)
