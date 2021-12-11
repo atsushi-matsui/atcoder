@@ -1,4 +1,6 @@
 # https://atcoder.jp/contests/arc050/tasks/arc050_b
+# 2分探索で検索
+# 計算量；log(N) Nは10**18未満
 R, B = list(map(int, input().split()))
 x, y = list(map(int, input().split()))
 
