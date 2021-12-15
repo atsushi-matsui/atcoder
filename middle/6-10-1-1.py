@@ -1,6 +1,6 @@
 # https://atcoder.jp/contests/abc068/tasks/arc079_a
 # ダイクトラム法
-#　計算量 log(N)*(M+N)
+# 計算量 log(N)*(M+N)
 
 import heapq
 
