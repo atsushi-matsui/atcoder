@@ -26,7 +26,7 @@ while len(Q) > 0:
     
     for i2, j2 in [[i+1, j], [i-1, j], [i, j+1], [i, j-1]]:
         #枠の外の場合
-        if not (0 <= i2 < R or 0 <= j2 < C):
+        if not (0 <= i2 < R and 0 <= j2 < C):
             continue
         #壁の場合
         if S[i2][j2] == '#':
