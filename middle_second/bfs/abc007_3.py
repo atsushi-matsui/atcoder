@@ -1,44 +1,51 @@
-#https://atcoder.jp/contests/abc007/tasks/abc007_3
+# https://atcoder.jp/contests/abc007/tasks/abc007_3
+
 from collections import deque
 
-R, C = list(map(int,input().split()))
-sy, sx = list(map(int,input().split()))
-gy, gx = list(map(int,input().split()))
-S = []
-for i in range(R):
-    S.append(input())
+R, C = map(int, input().split())
+sy, sx = map(int, input().split())
+gy, gx = map(int, input().split())
+c = []
 
-sy -= 1
-sx -= 1
-gy -= 1
-gx -= 1
+for _ in range(R):
+    c.append(input())
 
+# 訪問済みか
+is_visited = []
+# スタートからの距離
 dist = []
-for i in range(R):
-    dist.append([-1]*C)
+for _ in range(R):
+    is_visited.append([False] * C)
+    dist.append([0] * C)
 
-Q = deque()
-Q.append([sy, sx])
-dist[sy][sx] = 0
+# キュー
+q = deque()
 
-while len(Q) > 0:
-    i, j = Q.popleft()
-    
-    for i2, j2 in [[i+1, j], [i-1, j], [i, j+1], [i, j-1]]:
-        #枠の外の場合
-        if not (0 <= i2 < R and 0 <= j2 < C):
-            continue
-        #壁の場合
-        if S[i2][j2] == '#':
-            continue
-        #訪問済みの場合
-        if dist[i2][j2] != -1:
-            continue
-        
-        dist[i2][j2] = dist[i][j] + 1
-        Q.append([i2, j2])
-        # ゴールまでの距離を求めたら処理を終了
-        if i2 == gy and j2 == gx:
-            break
 
-print(dist[gy][gx])
+def is_check(y, x):
+    if 0 <= y < R and 0 <= x < C:
+        # 訪問ずみ
+        if is_visited[y][x]:
+            return False
+        # 壁なら進めない
+        if c[y][x] == "#":
+            return False
+
+        is_visited[y][x] = True
+        return True
+
+    return False
+
+
+q.append((sy - 1, sx - 1))
+while len(q) > 0:
+    ty, tx = q.popleft()
+    if ty == gy - 1 and tx == gx - 1:
+        break
+
+    for i, j in [[ty, tx - 1], [ty - 1, tx], [ty, tx + 1], [ty + 1, tx]]:
+        if is_check(i, j):
+            dist[i][j] = dist[ty][tx] + 1
+            q.append((i, j))
+
+print(dist[gy - 1][gx - 1])
