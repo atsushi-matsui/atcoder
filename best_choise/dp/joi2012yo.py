@@ -14,7 +14,6 @@ for _ in range(K):
     a, b = map(int, input().split())
     AB.update({a: b})
 
-# FIXME 3重配列の作成方法
 DP = [[[0] * 4 for i in range(4)] for j in range(N + 1)]
 
 """
