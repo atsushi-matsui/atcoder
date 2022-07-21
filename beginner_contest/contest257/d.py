@@ -10,7 +10,6 @@ pypyじゃないとTLE
 """
 
 from collections import deque
-import heapq
 
 N = int(input())
 X = []
